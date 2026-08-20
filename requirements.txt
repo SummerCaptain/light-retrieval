@@ -1,0 +1,38 @@
+# ============================================================
+# 知识库系统 - 混合检索 RAG
+#
+# 安装步骤:
+#   1. (可选) 设置 HuggingFace 模型缓存到 D 盘: .\set_env.bat
+#   2. 安装依赖: pip install -r requirements.txt
+# ============================================================
+
+# --- LLM / Agent 编排 ---
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# --- 混合检索 ---
+rank-bm25>=0.2.2
+jieba>=0.42.1
+faiss-cpu>=1.7.4
+sentence-transformers>=3.0.0   # BGE 向量模型（语义检索，首次下载约 1.3GB）
+
+# --- 重排序(可选, BGE Cross-Encoder, 首次下载约 1.3GB) ---
+FlagEmbedding>=1.2.0
+
+# --- 文档解析 ---
+pymupdf>=1.24.0
+python-docx>=1.1.0
+
+# --- 分级记忆 ---
+elasticsearch>=8.12.0
+
+# --- 效果评估(LangSmith + OpenEvals) ---
+langsmith>=0.1.0
+openevals>=0.0.1
+
+# --- Web GUI ---
+flask>=3.0.0
+
+# --- 通用工具 ---
+numpy>=1.26.0

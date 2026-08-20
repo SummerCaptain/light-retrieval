@@ -1,0 +1,525 @@
+{
+  "metadata": {
+    "name": "hybrid-retrieval-knowledge-base-golden-dataset",
+    "description": "RAG检索效果评估Golden Dataset，覆盖20个投资理财知识领域，包含知识检索、对比分析、步骤指南等多种查询类型",
+    "version": "2.0.0",
+    "created_at": "2026-08-18",
+    "total_questions": 60,
+    "domains": [
+      "ETF", "债券基金", "可转债", "基金定投",
+      "指数基金", "货币基金", "基金费用", "复利",
+      "主动与被动基金", "股票与混合基金", "QDII基金", "资产配置",
+      "基金分红", "黄金投资", "银行理财", "风险等级",
+      "公募REITs", "个人养老金", "止盈止损", "打新"
+    ],
+    "query_type_distribution": {
+      "knowledge_retrieval": 38,
+      "comparative_analysis": 13,
+      "procedural_guide": 9
+    },
+    "source_files": [
+      "etf_guide.txt",
+      "bond_fund_guide.txt",
+      "convertible_bond_guide.txt",
+      "fund_dca_guide.txt",
+      "index_fund_guide.txt",
+      "money_market_fund.txt",
+      "fund_fee_guide.txt",
+      "compound_interest.txt",
+      "active_vs_passive_fund.md",
+      "equity_hybrid_fund.md",
+      "qdii_fund.md",
+      "asset_allocation.md",
+      "fund_dividend.docx",
+      "gold_investment.docx",
+      "bank_wealth_vs_fund.docx",
+      "fund_risk_level.docx",
+      "reits.pdf",
+      "pension_fund.pdf",
+      "stop_profit_loss.pdf",
+      "ipo_subscription.pdf"
+    ]
+  },
+  "questions": [
+    {
+      "id": "q001",
+      "query": "什么是ETF？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["交易型开放式指数基金", "交易所", "指数"]
+    },
+    {
+      "id": "q002",
+      "query": "ETF和普通指数基金有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["交易方式", "费率", "门槛", "资金效率"]
+    },
+    {
+      "id": "q003",
+      "query": "ETF的管理费率高吗？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["被动管理", "管理费率", "较低"]
+    },
+    {
+      "id": "q004",
+      "query": "常见的ETF类型有哪些？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["宽基ETF", "行业ETF", "跨境ETF", "商品ETF"]
+    },
+    {
+      "id": "q005",
+      "query": "ETF能像股票一样实时买卖吗？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["实时交易", "交易时间", "股票"]
+    },
+    {
+      "id": "q006",
+      "query": "ETF买入最低需要多少份？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["100份", "整手"]
+    },
+    {
+      "id": "q007",
+      "query": "ETF和普通基金在申购门槛上有什么不同？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["85181fd191ff35203f18ac2a1f6a083a_0"],
+      "relevant_source_files": ["etf_guide.txt"],
+      "expected_keywords": ["100份起", "10元起"]
+    },
+    {
+      "id": "q008",
+      "query": "债券基金有哪些分类？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["纯债基金", "二级债基", "短债基金"]
+    },
+    {
+      "id": "q009",
+      "query": "什么是纯债基金？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["100%", "债券", "不参与股票", "风险最低"]
+    },
+    {
+      "id": "q010",
+      "query": "二级债基和纯债基金的区别是什么？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["80%", "20%", "股票", "债券"]
+    },
+    {
+      "id": "q011",
+      "query": "降息对债券基金有什么影响？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["利好", "降息", "票面利率", "净值上升"]
+    },
+    {
+      "id": "q012",
+      "query": "债券基金有哪些风险？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["利率风险", "信用风险", "流动性风险"]
+    },
+    {
+      "id": "q013",
+      "query": "利率上升对债券基金有什么影响？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["利率上升", "债券价格下跌", "净值承压"]
+    },
+    {
+      "id": "q014",
+      "query": "纯债基金和短债基金怎么选？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["42ae24716067df6f028a2fb06f0e254e_0"],
+      "relevant_source_files": ["bond_fund_guide.txt"],
+      "expected_keywords": ["风险最低", "流动性好", "替代货币基金"]
+    },
+    {
+      "id": "q015",
+      "query": "可转债是什么？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["可转换公司债券", "债券", "股票", "下有保底"]
+    },
+    {
+      "id": "q016",
+      "query": "可转债的转股价格是什么意思？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["转股价格", "转换", "股票"]
+    },
+    {
+      "id": "q017",
+      "query": "可转债中签后怎么操作？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["缴款", "T+2", "上市首日", "止盈"]
+    },
+    {
+      "id": "q018",
+      "query": "可转债的赎回条款是什么？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["130%", "强制赎回", "正股价格"]
+    },
+    {
+      "id": "q019",
+      "query": "可转债回售条款是什么？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["70%", "回售", "发行人"]
+    },
+    {
+      "id": "q020",
+      "query": "可转债稳健型投资者怎么止盈？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["130元", "140元", "150元", "分批止盈"]
+    },
+    {
+      "id": "q021",
+      "query": "可转债和普通债券哪个更好？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["e56d8830a5a66bf68c66abcabc2baaa3_0"],
+      "relevant_source_files": ["convertible_bond_guide.txt"],
+      "expected_keywords": ["债券的安全性", "增值潜力", "下有保底"]
+    },
+    {
+      "id": "q022",
+      "query": "基金定投是什么？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["定期定额", "微笑曲线", "摊薄成本"]
+    },
+    {
+      "id": "q023",
+      "query": "定投应该选什么类型的基金？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["波动性较大", "指数基金", "混合基金"]
+    },
+    {
+      "id": "q024",
+      "query": "基金定投最低多少钱？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["100元", "最低"]
+    },
+    {
+      "id": "q025",
+      "query": "市场下跌时要不要停止定投？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_1"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["不要", "低点", "摊薄成本"]
+    },
+    {
+      "id": "q026",
+      "query": "基金定投的操作步骤是什么？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["选择基金", "设定金额", "选择频率", "持续坚持", "适时止盈"]
+    },
+    {
+      "id": "q027",
+      "query": "定投止盈策略有哪些？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["目标收益止盈", "估值止盈", "情绪止盈"]
+    },
+    {
+      "id": "q028",
+      "query": "定投选月定投还是周定投？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["0fbb3309bc37fe8367c4052c479402b4_0"],
+      "relevant_source_files": ["fund_dca_guide.txt"],
+      "expected_keywords": ["月定投", "工资发放周期"]
+    },
+    {
+      "id": "q029",
+      "query": "什么是指数基金？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["b89eecd9d31791878d173489d2078ded_0"],
+      "relevant_source_files": ["index_fund_guide.txt"],
+      "expected_keywords": ["被动管理", "指数", "一篮子"]
+    },
+    {
+      "id": "q030",
+      "query": "如何挑选指数基金？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["b89eecd9d31791878d173489d2078ded_1"],
+      "relevant_source_files": ["index_fund_guide.txt"],
+      "expected_keywords": ["跟踪误差", "规模", "费率"]
+    },
+    {
+      "id": "q031",
+      "query": "货币基金主要投资什么？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["62e703495e446d7a38ce76b0ae2ebf4d_0"],
+      "relevant_source_files": ["money_market_fund.txt"],
+      "expected_keywords": ["货币市场工具", "短期国债", "同业存单"]
+    },
+    {
+      "id": "q032",
+      "query": "货币基金快速赎回有什么限制？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["62e703495e446d7a38ce76b0ae2ebf4d_1"],
+      "relevant_source_files": ["money_market_fund.txt"],
+      "expected_keywords": ["快速赎回", "限额", "万元"]
+    },
+    {
+      "id": "q033",
+      "query": "基金的持续费用有哪些？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["eb85bf2bf5b44f3ef2704152a581257f_0"],
+      "relevant_source_files": ["fund_fee_guide.txt"],
+      "expected_keywords": ["管理费", "托管费", "销售服务费"]
+    },
+    {
+      "id": "q034",
+      "query": "基金A类和C类份额怎么选？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["eb85bf2bf5b44f3ef2704152a581257f_1"],
+      "relevant_source_files": ["fund_fee_guide.txt"],
+      "expected_keywords": ["A 类", "C 类", "销售服务费", "申购费"]
+    },
+    {
+      "id": "q035",
+      "query": "什么是复利？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["ba831434646504f33c55eef714411e1f_0"],
+      "relevant_source_files": ["compound_interest.txt"],
+      "expected_keywords": ["利滚利", "本金", "指数增长"]
+    },
+    {
+      "id": "q036",
+      "query": "普通人如何利用复利实现长期投资？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["ba831434646504f33c55eef714411e1f_1"],
+      "relevant_source_files": ["compound_interest.txt"],
+      "expected_keywords": ["定投", "长期", "滚雪球"]
+    },
+    {
+      "id": "q037",
+      "query": "主动基金和被动基金有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["7f313c8d03102947f9569fd327d5fa9d_0"],
+      "relevant_source_files": ["active_vs_passive_fund.md"],
+      "expected_keywords": ["主动", "被动", "管理费", "费率"]
+    },
+    {
+      "id": "q038",
+      "query": "如何选择主动基金还是被动基金？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["7f313c8d03102947f9569fd327d5fa9d_1"],
+      "relevant_source_files": ["active_vs_passive_fund.md"],
+      "expected_keywords": ["核心与卫星", "指数基金", "长期有效"]
+    },
+    {
+      "id": "q039",
+      "query": "混合型基金按股票仓位分为哪几类？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["a9e1fd3fb587ba0a3d861faebda6cb4a_0"],
+      "relevant_source_files": ["equity_hybrid_fund.md"],
+      "expected_keywords": ["偏股", "平衡", "偏债", "灵活配置"]
+    },
+    {
+      "id": "q040",
+      "query": "股票型基金和偏债混合基金的风险有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["a9e1fd3fb587ba0a3d861faebda6cb4a_0"],
+      "relevant_source_files": ["equity_hybrid_fund.md"],
+      "expected_keywords": ["股票型", "偏债", "风险", "回撤"]
+    },
+    {
+      "id": "q041",
+      "query": "什么是QDII基金？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["ad87958e5d6b86d31195bc07fc98a853_0"],
+      "relevant_source_files": ["qdii_fund.md"],
+      "expected_keywords": ["合格境内机构投资者", "海外", "美股", "港股"]
+    },
+    {
+      "id": "q042",
+      "query": "QDII基金适合哪些人？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["ad87958e5d6b86d31195bc07fc98a853_1"],
+      "relevant_source_files": ["qdii_fund.md"],
+      "expected_keywords": ["分散国别风险", "海外", "资产配置"]
+    },
+    {
+      "id": "q043",
+      "query": "什么是资产配置？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["bd3e98c2c9cce7ea2deac15defae238f_0"],
+      "relevant_source_files": ["asset_allocation.md"],
+      "expected_keywords": ["资产类别", "股票", "债券", "分散"]
+    },
+    {
+      "id": "q044",
+      "query": "资产配置和择时有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["bd3e98c2c9cce7ea2deac15defae238f_1"],
+      "relevant_source_files": ["asset_allocation.md"],
+      "expected_keywords": ["择时", "预测", "纪律"]
+    },
+    {
+      "id": "q045",
+      "query": "基金分红是额外收益吗？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["8881b48b6e54dbc5fbac11e03f6d18ee_0"],
+      "relevant_source_files": ["fund_dividend.docx"],
+      "expected_keywords": ["分红", "净值", "总资产不变"]
+    },
+    {
+      "id": "q046",
+      "query": "现金分红和红利再投资怎么选？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["8881b48b6e54dbc5fbac11e03f6d18ee_0"],
+      "relevant_source_files": ["fund_dividend.docx"],
+      "expected_keywords": ["现金分红", "红利再投资", "复利"]
+    },
+    {
+      "id": "q047",
+      "query": "黄金投资有哪些方式？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["81b9a0f4aa8e343a26654733646bc448_0"],
+      "relevant_source_files": ["gold_investment.docx"],
+      "expected_keywords": ["实物黄金", "黄金 ETF", "积存金"]
+    },
+    {
+      "id": "q048",
+      "query": "黄金适合配置多少比例？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["81b9a0f4aa8e343a26654733646bc448_1"],
+      "relevant_source_files": ["gold_investment.docx"],
+      "expected_keywords": ["5%", "10%", "分散风险"]
+    },
+    {
+      "id": "q049",
+      "query": "银行理财和公募基金有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["c50d5a38bdc674ace9286cd2bbb8cdb7_0"],
+      "relevant_source_files": ["bank_wealth_vs_fund.docx"],
+      "expected_keywords": ["净值化", "信息披露", "流动性"]
+    },
+    {
+      "id": "q050",
+      "query": "银行理财的风险等级怎么划分？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["c50d5a38bdc674ace9286cd2bbb8cdb7_0"],
+      "relevant_source_files": ["bank_wealth_vs_fund.docx"],
+      "expected_keywords": ["R1", "R5", "风险等级"]
+    },
+    {
+      "id": "q051",
+      "query": "基金风险等级R1到R5分别对应什么基金？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["e1ae9be416bc1d4320e85fd337d753c0_0"],
+      "relevant_source_files": ["fund_risk_level.docx"],
+      "expected_keywords": ["R1", "R5", "货币基金", "股票型"]
+    },
+    {
+      "id": "q052",
+      "query": "投资者如何选择与自己匹配的基金？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["e1ae9be416bc1d4320e85fd337d753c0_1"],
+      "relevant_source_files": ["fund_risk_level.docx"],
+      "expected_keywords": ["风险测评", "承受能力", "匹配"]
+    },
+    {
+      "id": "q053",
+      "query": "公募REITs的收益来源有哪些？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["52fa5d4860361fb9159689abe685179d_0"],
+      "relevant_source_files": ["reits.pdf"],
+      "expected_keywords": ["经营现金流", "资产增值", "交易差价"]
+    },
+    {
+      "id": "q054",
+      "query": "公募REITs的强制分红比例是多少？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["52fa5d4860361fb9159689abe685179d_1"],
+      "relevant_source_files": ["reits.pdf"],
+      "expected_keywords": ["90%", "分红", "现金"]
+    },
+    {
+      "id": "q055",
+      "query": "个人养老金的年度缴费限额是多少？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["3adc7be82c17f49a1663c59515073cdc_0"],
+      "relevant_source_files": ["pension_fund.pdf"],
+      "expected_keywords": ["12000", "限额"]
+    },
+    {
+      "id": "q056",
+      "query": "个人养老金领取时按什么税率缴税？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["3adc7be82c17f49a1663c59515073cdc_0"],
+      "relevant_source_files": ["pension_fund.pdf"],
+      "expected_keywords": ["3%", "领取", "单独"]
+    },
+    {
+      "id": "q057",
+      "query": "止盈有哪些方法？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["51555620fd4a27133b41eb90fe88c6fe_0"],
+      "relevant_source_files": ["stop_profit_loss.pdf"],
+      "expected_keywords": ["目标收益率", "分批止盈", "回撤止盈"]
+    },
+    {
+      "id": "q058",
+      "query": "定投如何止盈？",
+      "query_type": "procedural_guide",
+      "relevant_doc_ids": ["51555620fd4a27133b41eb90fe88c6fe_0"],
+      "relevant_source_files": ["stop_profit_loss.pdf"],
+      "expected_keywords": ["止盈不止损", "分批", "摊薄成本"]
+    },
+    {
+      "id": "q059",
+      "query": "打新债和打新股有什么区别？",
+      "query_type": "comparative_analysis",
+      "relevant_doc_ids": ["1fa1303972d0abca0b54b5c19fcb9b65_0"],
+      "relevant_source_files": ["ipo_subscription.pdf"],
+      "expected_keywords": ["市值", "中签率", "门槛"]
+    },
+    {
+      "id": "q060",
+      "query": "打新债需要什么条件？",
+      "query_type": "knowledge_retrieval",
+      "relevant_doc_ids": ["1fa1303972d0abca0b54b5c19fcb9b65_0"],
+      "relevant_source_files": ["ipo_subscription.pdf"],
+      "expected_keywords": ["证券账户", "100 元", "1000 元"]
+    }
+  ]
+}
