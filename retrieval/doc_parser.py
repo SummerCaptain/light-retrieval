@@ -41,18 +41,24 @@ class DocParser:
 
     def __init__(
         self,
-        chunk_size: int = 512,
-        chunk_overlap: int = 64,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
         output_dir: Optional[str] = None,
     ):
         """
         初始化 DocParser
 
         Args:
-            chunk_size: 每个分块的最大字符数
-            chunk_overlap: 相邻分块的重叠字符数
+            chunk_size: 每个分块的最大字符数，默认读取全局配置 CHUNK_SIZE
+            chunk_overlap: 相邻分块的重叠字符数，默认读取全局配置 CHUNK_OVERLAP
             output_dir: 分块文件输出目录，默认为 data/chunks
         """
+        if chunk_size is None:
+            from config.settings import CHUNK_SIZE
+            chunk_size = CHUNK_SIZE
+        if chunk_overlap is None:
+            from config.settings import CHUNK_OVERLAP
+            chunk_overlap = CHUNK_OVERLAP
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 

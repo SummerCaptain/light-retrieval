@@ -24,77 +24,6 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.state import KnowledgeBaseState, RetrievedDocument
-from retrieval.reranker import SimpleReranker
-
-
-class TestSimpleReranker(unittest.TestCase):
-    """SimpleReranker 重排序测试"""
-
-    def setUp(self):
-        self.reranker = SimpleReranker()
-
-    @staticmethod
-    def _make_doc(content: str, score: float, doc_id: str = "doc1") -> dict:
-        return {
-            "doc_id": doc_id,
-            "chunk_id": 0,
-            "content": content,
-            "score": score,
-            "source": "hybrid",
-            "metadata": {"source_file": f"{doc_id}.txt"},
-        }
-
-    # ================================================================
-    # 测试1: 基本重排序 - 高相关文档排前
-    # ================================================================
-    def test_rerank_relevance(self):
-        """测试相关文档重排后得分更高"""
-        docs = [
-            self._make_doc("ETF是交易型开放式指数基金", 0.5, "doc1"),
-            self._make_doc("今天天气不错适合跑步", 0.8, "doc2"),
-            self._make_doc("ETF基金可以在交易所买卖", 0.3, "doc3"),
-        ]
-
-        result = self.reranker.rerank("ETF基金是什么？", docs, top_k=3)
-
-        # doc1 和 doc3 包含 "ETF"，应排在前
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0]["source"], "reranked")
-        # 至少第一个结果应该包含 ETF
-        self.assertIn("ETF", result[0]["content"])
-
-    # ================================================================
-    # 测试2: top_k 限制
-    # ================================================================
-    def test_rerank_top_k(self):
-        """测试 top_k 限制"""
-        docs = [self._make_doc(f"内容{i}", 0.5, f"doc{i}") for i in range(10)]
-
-        result = self.reranker.rerank("测试", docs, top_k=3)
-
-        self.assertEqual(len(result), 3)
-
-    # ================================================================
-    # 测试3: 空输入
-    # ================================================================
-    def test_rerank_empty(self):
-        """测试空查询或空文档列表"""
-        self.assertEqual(self.reranker.rerank("", [self._make_doc("a", 0.5)], 3), [])
-        self.assertEqual(self.reranker.rerank("测试", [], 3), [])
-
-    # ================================================================
-    # 测试4: 元数据保留
-    # ================================================================
-    def test_rerank_metadata(self):
-        """测试重排序后元数据完整"""
-        docs = [self._make_doc("ETF基金", 0.5, "doc1")]
-        docs[0]["metadata"]["source_file"] = "etf_guide.txt"
-
-        result = self.reranker.rerank("ETF", docs, top_k=1)
-
-        self.assertEqual(result[0]["metadata"]["source_file"], "etf_guide.txt")
-        self.assertIn("original_score", result[0]["metadata"])
-        self.assertEqual(result[0]["metadata"]["reranker"], "simple")
 
 
 class TestWorkflowRouting(unittest.TestCase):
@@ -125,19 +54,28 @@ class TestWorkflowRouting(unittest.TestCase):
 class TestRerankerFactory(unittest.TestCase):
     """重排序器工厂函数测试"""
 
-    def test_create_simple(self):
-        """测试创建 SimpleReranker"""
-        from retrieval.reranker import create_reranker, SimpleReranker
-
-        reranker = create_reranker(use_bge=False)
-        self.assertIsInstance(reranker, SimpleReranker)
-
     def test_create_bge(self):
         """测试创建 BGEReranker（不加载模型）"""
         from retrieval.reranker import create_reranker, BGEReranker
 
-        reranker = create_reranker(use_bge=True)
+        reranker = create_reranker()
         self.assertIsInstance(reranker, BGEReranker)
+
+    def test_rerank_empty(self):
+        """测试空查询或空文档列表直接返回空（不触发模型加载）"""
+        from retrieval.reranker import create_reranker
+
+        reranker = create_reranker()
+        doc = {
+            "doc_id": "doc1",
+            "chunk_id": 0,
+            "content": "a",
+            "score": 0.5,
+            "source": "hybrid",
+            "metadata": {"source_file": "doc1.txt"},
+        }
+        self.assertEqual(reranker.rerank("", [doc], 3), [])
+        self.assertEqual(reranker.rerank("测试", [], 3), [])
 
 
 class TestStateDefinition(unittest.TestCase):

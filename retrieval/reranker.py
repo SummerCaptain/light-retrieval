@@ -2,102 +2,58 @@
 """
 Reranker - BGE-Reranker 重排序模块
 
-对混合检索的候选文档进行精细重排序，提升 Top-K 的相关性。
-支持两种模式：
-1. 生产模式：使用 BAAI/bge-reranker-large 模型
-2. 降级模式：基于关键词重叠的简单重排序（无需 GPU/模型下载）
+使用 BAAI/bge-reranker-large 交叉编码器对混合检索的候选文档进行精细重排序，
+基于查询与文档的语义相关性打分。
+
+直接基于 transformers 的 AutoModelForSequenceClassification 实现交叉编码打分，
+不依赖 FlagEmbedding（其 compute_score 依赖的 tokenizer.prepare_for_model
+已被新版 transformers 移除，存在版本不兼容）。
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
+import torch
 
-class SimpleReranker:
-    """
-    简单重排序器（降级方案）
-
-    基于查询与文档的关键词重叠度进行重排序，
-    无需下载模型，适用于测试和轻量部署场景。
-    """
-
-    def rerank(
-        self,
-        query: str,
-        documents: List[Dict],
-        top_k: int = 5,
-    ) -> List[Dict]:
-        """
-        基于关键词重叠度重排序
-
-        Args:
-            query: 查询文本
-            documents: 候选文档列表（RetrievedDocument 格式）
-            top_k: 返回数量
-
-        Returns:
-            重排序后的文档列表
-        """
-        if not query or not documents:
-            return []
-
-        # 对查询进行字符级分词（简化版，适配中文）
-        query_chars = set(query)
-
-        scored_docs = []
-        for doc in documents:
-            content = doc.get("content", "")
-            # 计算字符重叠率
-            content_chars = set(content)
-            overlap = len(query_chars & content_chars)
-            total = max(len(query_chars), 1)
-            overlap_score = overlap / total
-
-            # 保留原始 RRF 得分作为权重
-            original_score = doc.get("score", 0.0)
-
-            # 综合得分 = 原始得分权重(0.6) + 重叠率权重(0.4)
-            combined_score = 0.6 * original_score + 0.4 * overlap_score
-
-            reranked_doc = dict(doc)
-            reranked_doc["score"] = combined_score
-            reranked_doc["source"] = "reranked"
-            reranked_doc["metadata"] = dict(doc.get("metadata", {}))
-            reranked_doc["metadata"]["original_score"] = original_score
-            reranked_doc["metadata"]["reranker"] = "simple"
-            scored_docs.append(reranked_doc)
-
-        # 按综合得分降序
-        scored_docs.sort(key=lambda x: x["score"], reverse=True)
-        return scored_docs[:top_k]
+from config.settings import RERANKER_MODEL_NAME, RERANKER_DEVICE
 
 
 class BGEReranker:
     """
-    BGE-Reranker 重排序器（生产模式）
+    BGE-Reranker 交叉编码器重排序器
 
-    使用 BAAI/bge-reranker-large 交叉编码器对查询-文档对进行精细打分。
-    首次使用会自动下载模型（约 1.3GB）。
+    使用 BAAI/bge-reranker-large 对查询-文档对进行精细打分。
+    首次使用会加载本地缓存的模型（约 2.2GB）。
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-reranker-large", device: str = "cpu"):
+    def __init__(
+        self,
+        model_name: str = RERANKER_MODEL_NAME,
+        device: str = RERANKER_DEVICE,
+        max_length: int = 512,
+    ):
         """
         初始化 BGE-Reranker
 
         Args:
             model_name: 模型名称
             device: 运行设备 cpu/cuda
+            max_length: 查询-文档对的最大截断长度
         """
         self.model_name = model_name
         self.device = device
+        self.max_length = max_length
         self._model = None
+        self._tokenizer = None
 
     def _load_model(self):
-        """延迟加载模型"""
+        """延迟加载模型与分词器"""
         if self._model is None:
-            from FlagEmbedding import FlagReranker
-            self._model = FlagReranker(
-                self.model_name,
-                use_fp16=self.device == "cuda",
-            )
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self._model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+            self._model.to(self.device)
+            self._model.eval()
 
     def rerank(
         self,
@@ -121,13 +77,9 @@ class BGEReranker:
 
         self._load_model()
 
-        # 构建查询-文档对
+        # 构建查询-文档对并打分
         pairs = [[query, doc.get("content", "")] for doc in documents]
-
-        # 获取相关性分数
-        scores = self._model.compute_score(pairs)
-        if isinstance(scores, (int, float)):
-            scores = [scores]
+        scores = self._score(pairs)
 
         # 组装结果
         scored_docs = []
@@ -144,18 +96,26 @@ class BGEReranker:
         scored_docs.sort(key=lambda x: x["score"], reverse=True)
         return scored_docs[:top_k]
 
+    def _score(self, pairs: List[List[str]]) -> List[float]:
+        """对查询-文档对批量交叉编码打分"""
+        queries = [p[0] for p in pairs]
+        passages = [p[1] for p in pairs]
 
-def create_reranker(use_bge: bool = False, device: str = "cpu") -> object:
-    """
-    工厂函数：创建重排序器
+        with torch.no_grad():
+            # 交叉编码：<s> query </s></s> passage </s>，超长时从尾部（passage 侧）截断
+            inputs = self._tokenizer(
+                queries,
+                passages,
+                truncation=True,
+                max_length=self.max_length,
+                padding=True,
+                return_tensors="pt",
+            ).to(self.device)
+            logits = self._model(**inputs).logits.view(-1).float()
 
-    Args:
-        use_bge: 是否使用 BGE 模型（False 则使用 SimpleReranker）
-        device: 运行设备
+        return logits.cpu().tolist()
 
-    Returns:
-        重排序器实例
-    """
-    if use_bge:
-        return BGEReranker(device=device)
-    return SimpleReranker()
+
+def create_reranker() -> BGEReranker:
+    """工厂函数：创建 BGE-Reranker 重排序器"""
+    return BGEReranker()

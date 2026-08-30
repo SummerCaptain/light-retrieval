@@ -14,6 +14,9 @@
 
 import json
 import os
+import uuid
+import logging
+import contextvars
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
@@ -27,7 +30,7 @@ from sentence_transformers import SentenceTransformer
 from config.settings import (
     DASHSCOPE_API_KEY, LLM_MODEL_NAME, LLM_TEMPERATURE,
     EMBEDDING_MODEL_NAME, EMBEDDING_DEVICE,
-    RERANKER_TOP_K, KNOWLEDGE_BASE_DIR,
+    RERANKER_TOP_K, KNOWLEDGE_BASE_DIR, VECTOR_STORE_DIR,
 )
 from core.state import KnowledgeBaseState, RetrievedDocument
 from retrieval.doc_parser import DocParser
@@ -40,6 +43,26 @@ from memory.long_term import LongTermMemoryManager
 
 import warnings
 warnings.filterwarnings("ignore")
+
+
+# ============================================================
+# 结构化日志（trace_id 关联单次请求的日志）
+# ============================================================
+logger = logging.getLogger("knowledge_base")
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+
+_trace_id: contextvars.ContextVar[str] = contextvars.ContextVar("kb_trace_id", default="")
+
+
+def _log(msg: str, *args) -> None:
+    """打印带 trace_id 前缀的结构化日志"""
+    tid = _trace_id.get()
+    prefix = f"[{tid}] " if tid else ""
+    logger.info(prefix + msg, *args)
 
 
 # ============================================================
@@ -108,13 +131,13 @@ DIRECT_ANSWER_PROMPT = """你是一个友好的知识库AI助手。请直接回�
 
 def assess_query(state: KnowledgeBaseState) -> Dict[str, Any]:
     """评估查询类型和处理模式"""
-    print("[工作流] 节点: assess_query")
+    _log("节点: assess_query")
 
     prompt = ChatPromptTemplate.from_template(ASSESSMENT_PROMPT)
     chain = prompt | llm | JsonOutputParser()
     result = chain.invoke({"user_query": state["user_query"]})
 
-    print(f"[工作流] 评估结果: {result}")
+    _log(f"评估结果: {result}")
 
     processing_mode = result.get("processing_mode", "reactive")
     if processing_mode not in ["reactive", "deliberative"]:
@@ -124,7 +147,7 @@ def assess_query(state: KnowledgeBaseState) -> Dict[str, Any]:
     if query_type not in ["simple_qa", "knowledge_retrieval", "comparative_analysis", "procedural_guide"]:
         query_type = "simple_qa"
 
-    print(f"[工作流] 路由: mode={processing_mode}, type={query_type}")
+    _log(f"路由: mode={processing_mode}, type={query_type}")
 
     return {
         "query_type": query_type,
@@ -134,7 +157,7 @@ def assess_query(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 def hybrid_search(state: KnowledgeBaseState) -> Dict[str, Any]:
     """混合检索：BM25 + Vector → RRF 融合"""
-    print("[工作流] 节点: hybrid_search")
+    _log("节点: hybrid_search")
 
     # 从全局获取检索器实例
     retriever = _get_or_init_retriever()
@@ -142,7 +165,7 @@ def hybrid_search(state: KnowledgeBaseState) -> Dict[str, Any]:
 
     results = retriever.search(query, top_k=20)
 
-    print(f"[工作流] 混合检索返回 {len(results)} 条结果")
+    _log(f"混合检索返回 {len(results)} 条结果")
 
     return {
         "fused_results": results,
@@ -151,14 +174,14 @@ def hybrid_search(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 
 def rerank(state: KnowledgeBaseState) -> Dict[str, Any]:
-    """重排序：BGE-Reranker / SimpleReranker"""
-    print("[工作流] 节点: rerank")
+    """重排序：BGE-Reranker 交叉编码器"""
+    _log("节点: rerank")
 
     reranker = _get_or_init_reranker()
     fused_results = state.get("fused_results") or []
 
     if not fused_results:
-        print("[工作流] 无候选文档，跳过重排序")
+        _log("无候选文档，跳过重排序")
         return {
             "reranked_results": [],
             "final_docs": [],
@@ -171,7 +194,7 @@ def rerank(state: KnowledgeBaseState) -> Dict[str, Any]:
         top_k=RERANKER_TOP_K,
     )
 
-    print(f"[工作流] 重排序后保留 {len(reranked)} 条结果")
+    _log(f"重排序后保留 {len(reranked)} 条结果")
 
     return {
         "reranked_results": reranked,
@@ -182,7 +205,7 @@ def rerank(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 def inject_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
     """注入记忆上下文：短期记忆 + 长期记忆"""
-    print("[工作流] 节点: inject_memory")
+    _log("节点: inject_memory")
 
     session_id = state.get("session_id") or "default"
 
@@ -193,18 +216,38 @@ def inject_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
     # 追问判断
     is_follow = stm.is_follow_up(state["user_query"])
 
-    # 长期记忆
+    # 长期记忆：用户偏好画像 + 相似历史问答（含答案）
     ltm = _get_or_init_ltm()
     long_term_context = ""
     user_id = state.get("session_id") or "default"
 
     if ltm.is_connected:
+        parts = []
+
+        # 用户偏好主题（历史交互最常问的标签）
+        tags = ltm.get_user_tags(user_id, limit=5)
+        if tags:
+            parts.append("[用户偏好主题] " + "、".join(tags))
+
+        # 相似历史问答（问题 + 答案，答案截断避免上下文过长）
         similar = ltm.search_similar(user_id, state["user_query"], top_k=3)
         if similar:
-            lines = ["[相似历史问题]"]
+            lines = ["[相似历史问答]"]
             for i, record in enumerate(similar, 1):
                 lines.append(f"{i}. Q: {record.get('query', '')}")
-            long_term_context = "\n".join(lines)
+                answer = record.get("answer", "")
+                if answer:
+                    lines.append(f"   A: {answer[:200]}")
+            parts.append("\n".join(lines))
+
+        # 反馈信号（有正/负面反馈时提示，便于调整回答风格）
+        feedback = ltm.get_feedback_stats(user_id)
+        if feedback.get("positive", 0) > 0 or feedback.get("negative", 0) > 0:
+            parts.append(
+                f"[用户反馈] 正面 {feedback.get('positive', 0)} / 负面 {feedback.get('negative', 0)}"
+            )
+
+        long_term_context = "\n\n".join(parts)
 
     # 合并记忆上下文
     memory_parts = []
@@ -217,8 +260,8 @@ def inject_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
 
     combined_context = "\n\n".join(memory_parts) if memory_parts else ""
 
-    print(f"[工作流] 记忆注入: 短期={'有' if short_term_context else '无'}, "
-          f"长期={'有' if long_term_context else '无'}, 追问={'是' if is_follow else '否'}")
+    _log(f"记忆注入: 短期={'有' if short_term_context else '无'}, "
+         f"长期={'有' if long_term_context else '无'}, 追问={'是' if is_follow else '否'}")
 
     return {
         "long_term_context": combined_context,
@@ -229,7 +272,7 @@ def inject_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 def generate_answer(state: KnowledgeBaseState) -> Dict[str, Any]:
     """基于检索结果 + 记忆上下文生成回答"""
-    print("[工作流] 节点: generate_answer")
+    _log("节点: generate_answer")
 
     # 格式化检索文档
     final_docs = state.get("final_docs") or []
@@ -257,7 +300,7 @@ def generate_answer(state: KnowledgeBaseState) -> Dict[str, Any]:
         "memory_context": memory_context,
     })
 
-    print(f"[工作流] 生成回答完成, 长度: {len(result)}")
+    _log(f"生成回答完成, 长度: {len(result)}")
 
     return {
         "final_response": result,
@@ -268,7 +311,7 @@ def generate_answer(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 def direct_answer(state: KnowledgeBaseState) -> Dict[str, Any]:
     """反应式：直接回答简单问题"""
-    print("[工作流] 节点: direct_answer")
+    _log("节点: direct_answer")
 
     session_id = state.get("session_id") or "default"
     stm = _get_or_init_stm(session_id)
@@ -291,7 +334,7 @@ def direct_answer(state: KnowledgeBaseState) -> Dict[str, Any]:
 
 def store_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
     """双写记忆：短期 + 长期"""
-    print("[工作流] 节点: store_memory")
+    _log("节点: store_memory")
 
     session_id = state.get("session_id") or "default"
     query = state["user_query"]
@@ -318,9 +361,9 @@ def store_memory(state: KnowledgeBaseState) -> Dict[str, Any]:
             retrieved_docs=doc_ids,
             tags=tags,
         )
-        print("[工作流] 长期记忆已存储")
+        _log("长期记忆已存储")
     else:
-        print("[工作流] ES 不可用，仅存储短期记忆")
+        _log("ES 不可用，仅存储短期记忆")
 
     return {"current_phase": "respond"}
 
@@ -343,6 +386,7 @@ def route_after_assess(state: KnowledgeBaseState) -> str:
 
 _retriever = None
 _reranker = None
+_workflow = None
 _stm_instances: Dict[str, ShortTermMemoryManager] = {}
 _ltm_instance = None
 
@@ -351,30 +395,48 @@ def _get_or_init_retriever() -> HybridRetriever:
     """获取或初始化混合检索器"""
     global _retriever
     if _retriever is None:
-        parser = DocParser()
         bm25 = BM25Retriever()
         embedder = SentenceTransformer(EMBEDDING_MODEL_NAME, device=EMBEDDING_DEVICE)
-        vector = VectorRetriever(embedder=embedder)
+        vector = VectorRetriever(embedder=embedder, index_dir=str(VECTOR_STORE_DIR))
 
-        # 尝试从知识库目录构建索引
         kb_dir = str(KNOWLEDGE_BASE_DIR)
-        try:
-            parser.parse_directory(kb_dir)
-            bm25.build_index(kb_dir)
+
+        # 向量索引优先从磁盘加载；知识库文档有更新时重建
+        if _vector_index_fresh():
+            vector.load_index()
+            _log("向量索引已从磁盘加载")
+        else:
             vector.build_index(kb_dir)
-            print(f"[初始化] 索引构建完成: {kb_dir}")
-        except Exception as e:
-            print(f"[初始化] 索引构建警告: {e}")
+            vector.save_index()
+            _log("向量索引已构建并保存")
+
+        bm25.build_index(kb_dir)
 
         _retriever = HybridRetriever(bm25, vector)
     return _retriever
+
+
+def _vector_index_fresh() -> bool:
+    """判断磁盘上的向量索引是否与知识库文档同步（避免使用过期索引）"""
+    index_file = VECTOR_STORE_DIR / "vector.index"
+    registry_file = VECTOR_STORE_DIR / "registry.json"
+    if not (index_file.exists() and registry_file.exists()):
+        return False
+
+    index_mtime = index_file.stat().st_mtime
+    supported = {".txt", ".md", ".pdf", ".docx"}
+    for f in KNOWLEDGE_BASE_DIR.iterdir():
+        if f.is_file() and f.suffix.lower() in supported:
+            if f.stat().st_mtime > index_mtime:
+                return False
+    return True
 
 
 def _get_or_init_reranker():
     """获取或初始化重排序器"""
     global _reranker
     if _reranker is None:
-        _reranker = create_reranker(use_bge=False)
+        _reranker = create_reranker()
     return _reranker
 
 
@@ -450,6 +512,14 @@ def create_knowledge_base_workflow() -> StateGraph:
     return workflow.compile()
 
 
+def _get_or_init_workflow():
+    """获取或初始化编译好的工作流图（模块级单例，避免每次请求重复编译）"""
+    global _workflow
+    if _workflow is None:
+        _workflow = create_knowledge_base_workflow()
+    return _workflow
+
+
 # ============================================================
 # 运行入口
 # ============================================================
@@ -468,7 +538,11 @@ def run_knowledge_base(
     Returns:
         完整状态字典
     """
-    agent = create_knowledge_base_workflow()
+    agent = _get_or_init_workflow()
+
+    trace_id = uuid.uuid4().hex[:8]
+    token = _trace_id.set(trace_id)
+    _log("开始处理 session=%s query=%s", session_id, user_query)
 
     initial_state = {
         "user_query": user_query,
@@ -490,7 +564,12 @@ def run_knowledge_base(
         "evaluation_trace": None,
     }
 
-    result = agent.invoke(initial_state)
+    try:
+        result = agent.invoke(initial_state)
+    finally:
+        _trace_id.reset(token)
+
+    _log("处理完成 session=%s", session_id)
     return result
 
 

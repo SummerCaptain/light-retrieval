@@ -144,6 +144,7 @@ def run_full_rag_for_query(query: str) -> Dict[str, Any]:
     context_text = "\n\n".join(context_parts)
 
     return {
+        "retrieved_docs": final_docs,
         "retrieved_doc_ids": doc_ids,
         "final_response": result.get("final_response", ""),
         "processing_mode": result.get("processing_mode", ""),
@@ -271,11 +272,12 @@ def _make_hit_rate_evaluator(k: int = 5):
     def hit_rate_evaluator(run, example):
         try:
             # 直接访问 run.outputs（参考 2-langsmith_testing_evaluation.py 模式）
-            retrieved = run.outputs.get("retrieved_doc_ids", []) if run.outputs else []
+            retrieved = run.outputs.get("retrieved_docs", []) if run.outputs else []
             example_outputs = _get_example_outputs(example)
-            relevant = example_outputs.get("relevant_doc_ids", [])
+            relevant = example_outputs.get("relevant_source_files", [])
+            keywords = example_outputs.get("expected_keywords", [])
 
-            hr = hit_rate(retrieved, relevant, k=k)
+            hr = hit_rate(retrieved, relevant, keywords, k=k)
 
             return {
                 "key": "hit_rate",
@@ -290,11 +292,12 @@ def _make_hit_rate_evaluator(k: int = 5):
 def _mrr_evaluator(run, example):
     """MRR 评估器：正确文档在排序中的位置倒数"""
     try:
-        retrieved = run.outputs.get("retrieved_doc_ids", []) if run.outputs else []
+        retrieved = run.outputs.get("retrieved_docs", []) if run.outputs else []
         example_outputs = _get_example_outputs(example)
-        relevant = example_outputs.get("relevant_doc_ids", [])
+        relevant = example_outputs.get("relevant_source_files", [])
+        keywords = example_outputs.get("expected_keywords", [])
 
-        mr = mrr(retrieved, relevant)
+        mr = mrr(retrieved, relevant, keywords)
 
         return {
             "key": "mrr",
@@ -458,6 +461,7 @@ def run_langsmith_retrieval_eval(
         return {
             "query_id": query_id,
             "query": query,
+            "retrieved_docs": retrieval_result["reranked_results"],
             "retrieved_doc_ids": retrieval_result["reranked_doc_ids"],
             "fused_doc_ids": retrieval_result["fused_doc_ids"],
             "context": retrieval_result["context"],
@@ -519,6 +523,7 @@ def run_langsmith_full_rag_eval(
         return {
             "query_id": query_id,
             "query": query,
+            "retrieved_docs": rag_result["retrieved_docs"],
             "retrieved_doc_ids": rag_result["retrieved_doc_ids"],
             "final_response": rag_result["final_response"],
             "processing_mode": rag_result["processing_mode"],
@@ -591,7 +596,7 @@ def run_local_evaluation(
 
     for i, q in enumerate(questions):
         query = q["query"]
-        relevant_doc_ids = q["relevant_doc_ids"]
+        relevant_source_files = q["relevant_source_files"]
         expected_keywords = q.get("expected_keywords", [])
         query_type = q.get("query_type", "unknown")
 
@@ -600,22 +605,22 @@ def run_local_evaluation(
         try:
             if use_full_rag:
                 rag_result = run_full_rag_for_query(query)
-                retrieved_ids = rag_result["retrieved_doc_ids"]
+                retrieved_docs = rag_result["retrieved_docs"]
                 final_response = rag_result["final_response"]
             else:
                 retrieval_result = run_retrieval_for_query(query)
-                retrieved_ids = retrieval_result["reranked_doc_ids"]
+                retrieved_docs = retrieval_result["reranked_results"]
                 final_response = ""
 
-            hr = hit_rate(retrieved_ids, relevant_doc_ids, k=eval_k)
-            mr = mrr(retrieved_ids, relevant_doc_ids)
+            hr = hit_rate(retrieved_docs, relevant_source_files, expected_keywords, k=eval_k)
+            mr = mrr(retrieved_docs, relevant_source_files, expected_keywords)
 
             result_item = {
                 "query_id": q["id"],
                 "query": query,
                 "query_type": query_type,
-                "retrieved_doc_ids": retrieved_ids,
-                "relevant_doc_ids": relevant_doc_ids,
+                "retrieved_docs": retrieved_docs,
+                "relevant_source_files": relevant_source_files,
                 "expected_keywords": expected_keywords,
                 "final_response": final_response,
                 "hit_rate": hr,
@@ -639,8 +644,8 @@ def run_local_evaluation(
                 "query_id": q["id"],
                 "query": query,
                 "query_type": query_type,
-                "retrieved_doc_ids": [],
-                "relevant_doc_ids": relevant_doc_ids,
+                "retrieved_docs": [],
+                "relevant_source_files": relevant_source_files,
                 "expected_keywords": expected_keywords,
                 "final_response": "",
                 "hit_rate": 0.0,
@@ -719,10 +724,11 @@ def print_evaluation_report(report: Dict[str, Any]):
         print("-" * 60)
         for d in missed:
             print(f"  - [{d['query_id']}] {d['query']}")
-            print(f"    期望文档: {d['relevant_doc_ids']}")
-            retrieved = d.get('retrieved_doc_ids', [])
+            print(f"    期望来源: {d['relevant_source_files']}")
+            retrieved = d.get('retrieved_docs', [])
             if retrieved:
-                print(f"    实际Top-{report['eval_k']}: {retrieved[:report['eval_k']]}")
+                top_sources = [doc.get("metadata", {}).get("source_file", "") for doc in retrieved[:report['eval_k']]]
+                print(f"    实际Top-{report['eval_k']}: {top_sources}")
             else:
                 print(f"    实际Top-{report['eval_k']}: (无检索结果)")
             if d.get("error"):

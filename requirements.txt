@@ -17,8 +17,8 @@ jieba>=0.42.1
 faiss-cpu>=1.7.4
 sentence-transformers>=3.0.0   # BGE 向量模型（语义检索，首次下载约 1.3GB）
 
-# --- 重排序(可选, BGE Cross-Encoder, 首次下载约 1.3GB) ---
-FlagEmbedding>=1.2.0
+# --- 重排序(BGE Cross-Encoder, 直接使用 transformers, 模型约 2.2GB) ---
+# transformers 由 sentence-transformers 传递依赖提供
 
 # --- 文档解析 ---
 pymupdf>=1.24.0

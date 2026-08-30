@@ -143,6 +143,15 @@ function handleKey(e) {
 
 function ask(el) { queryInput.value = el.textContent; sendQuery(); }
 
+function getSessionId() {
+  let sid = localStorage.getItem('kb_session_id');
+  if (!sid) {
+    sid = 'web_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('kb_session_id', sid);
+  }
+  return sid;
+}
+
 function addMsg(role, html) {
   const d = document.createElement('div');
   d.className = 'msg ' + role;
@@ -171,7 +180,7 @@ async function sendQuery() {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({query: q})
+      body: JSON.stringify({query: q, session_id: getSessionId()})
     });
     const data = await res.json();
     typingEl.style.display = 'none';
@@ -222,7 +231,7 @@ def chat():
     if not query:
         return jsonify({"answer": "请输入问题", "mode": "", "doc_count": 0, "sources": [], "elapsed": ""})
 
-    session_id = "web_default"
+    session_id = data.get("session_id") or "default"
 
     try:
         start_time = datetime.now()

@@ -21,7 +21,7 @@ from retrieval.doc_parser import DocParser
 from retrieval.bm25_retriever import BM25Retriever
 from retrieval.vector_retriever import VectorRetriever
 from retrieval.hybrid_retriever import HybridRetriever
-from retrieval.reranker import SimpleReranker
+from retrieval.reranker import BGEReranker
 from memory.short_term import ShortTermMemoryManager
 
 sys.stdout = _old
@@ -73,8 +73,8 @@ for q in ["ETF和指数基金的区别", "降息债券", "可转债操作"]:
         print(f"    [{r['doc_id']}] score={r['score']:.4f} bm25={bm25_rank} vec={vec_rank}")
 
 # 5. 重排序
-print("\n[5] 重排序 (SimpleReranker)...")
-reranker = SimpleReranker()
+print("\n[5] 重排序 (BGEReranker)...")
+reranker = BGEReranker()
 for q in ["ETF和指数基金的区别"]:
     fused = hybrid.search(q, top_k=10)
     reranked = reranker.rerank(q, fused, top_k=5)

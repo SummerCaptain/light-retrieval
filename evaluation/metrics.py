@@ -6,14 +6,38 @@ RAG 检索效果评估指标
 
 - Hit Rate: 正确文档是否出现在 Top-K 结果中（召回率视角）
 - MRR: 正确文档在排序中的位置倒数均值（排序质量视角）
+
+相关性锚点采用「来源文件 + 关键词」而非内容 MD5，避免文档内容一变
+相关文档 ID 全部失效的问题。
 """
 
 from typing import Dict, List, Any
 
 
+def _is_relevant(
+    doc: Dict[str, Any],
+    relevant_source_files: List[str],
+    expected_keywords: List[str],
+) -> bool:
+    """
+    判断检索文档是否与题目相关（来源文件 + 关键词双重锚点）
+
+    文档来源文件命中题目相关文件、且内容包含任一期望关键词时判定为相关。
+    """
+    source_file = (doc.get("metadata") or {}).get("source_file", "")
+    if relevant_source_files and source_file not in relevant_source_files:
+        return False
+    if expected_keywords:
+        content = doc.get("content", "")
+        if not any(kw in content for kw in expected_keywords):
+            return False
+    return True
+
+
 def hit_rate(
-    retrieved_doc_ids: List[str],
-    relevant_doc_ids: List[str],
+    retrieved_docs: List[Dict[str, Any]],
+    relevant_source_files: List[str],
+    expected_keywords: List[str] = None,
     k: int = 5,
 ) -> float:
     """
@@ -22,26 +46,27 @@ def hit_rate(
     只要 Top-K 结果中包含任意一个相关文档，即为命中。
 
     Args:
-        retrieved_doc_ids: 检索返回的文档ID列表（已按相关性排序）
-        relevant_doc_ids: 人工标注的相关文档ID列表
+        retrieved_docs: 检索返回的文档列表（已按相关性排序）
+        relevant_source_files: 人工标注的相关来源文件列表
+        expected_keywords: 期望关键词列表
         k: 只看前 K 个结果
 
     Returns:
         1.0 表示命中，0.0 表示未命中
     """
-    if not relevant_doc_ids:
+    if not relevant_source_files:
         return 0.0
 
-    top_k_ids = retrieved_doc_ids[:k]
-    for doc_id in relevant_doc_ids:
-        if doc_id in top_k_ids:
+    for doc in retrieved_docs[:k]:
+        if _is_relevant(doc, relevant_source_files, expected_keywords or []):
             return 1.0
     return 0.0
 
 
 def mrr(
-    retrieved_doc_ids: List[str],
-    relevant_doc_ids: List[str],
+    retrieved_docs: List[Dict[str, Any]],
+    relevant_source_files: List[str],
+    expected_keywords: List[str] = None,
 ) -> float:
     """
     计算 MRR (Mean Reciprocal Rank)
@@ -50,17 +75,18 @@ def mrr(
     未找到则返回 0。
 
     Args:
-        retrieved_doc_ids: 检索返回的文档ID列表（已按相关性排序）
-        relevant_doc_ids: 人工标注的相关文档ID列表
+        retrieved_docs: 检索返回的文档列表（已按相关性排序）
+        relevant_source_files: 人工标注的相关来源文件列表
+        expected_keywords: 期望关键词列表
 
     Returns:
         1/r（第一个相关文档排名的倒数），未命中返回 0.0
     """
-    if not relevant_doc_ids:
+    if not relevant_source_files:
         return 0.0
 
-    for rank, doc_id in enumerate(retrieved_doc_ids, start=1):
-        if doc_id in relevant_doc_ids:
+    for rank, doc in enumerate(retrieved_docs, start=1):
+        if _is_relevant(doc, relevant_source_files, expected_keywords or []):
             return 1.0 / rank
     return 0.0
 
@@ -101,10 +127,10 @@ def compute_batch_metrics(
     Args:
         results: 每个元素包含:
             - query_id: 查询ID
-            - retrieved_doc_ids: 检索返回的文档ID列表
-            - relevant_doc_ids: 人工标注的相关文档ID列表
+            - retrieved_docs: 检索返回的文档列表
+            - relevant_source_files: 人工标注的相关来源文件列表
+            - expected_keywords: 期望关键词列表
             - final_response: 模型生成的回答（可选）
-            - expected_keywords: 期望关键词列表（可选）
         k: Hit Rate 的 Top-K
 
     Returns:
@@ -121,13 +147,13 @@ def compute_batch_metrics(
     details = []
 
     for item in results:
-        retrieved = item.get("retrieved_doc_ids", [])
-        relevant = item.get("relevant_doc_ids", [])
-        response = item.get("final_response", "")
+        retrieved = item.get("retrieved_docs", [])
+        relevant = item.get("relevant_source_files", [])
         keywords = item.get("expected_keywords", [])
+        response = item.get("final_response", "")
 
-        hr = hit_rate(retrieved, relevant, k=k)
-        mr = mrr(retrieved, relevant)
+        hr = hit_rate(retrieved, relevant, keywords, k=k)
+        mr = mrr(retrieved, relevant, keywords)
 
         hit_rates.append(hr)
         mrrs.append(mr)
