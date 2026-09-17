@@ -1,4 +1,4 @@
-# 轻量级混合检索知识库系统
+# light-retrieval
 
 一个基于 **LangGraph + 通义千问 + 混合检索** 的 RAG（检索增强生成）知识库问答系统。用户提问后，系统先从本地知识库中检索出最相关的段落，再把段落拼进 Prompt 交给大模型生成回答，让 AI 只依据你的资料回答、不凭空编造，并标注来源。
 
@@ -17,7 +17,7 @@
 ## 项目结构
 
 ```
-hybrid-retrieval-knowledge-base-system/
+light-retrieval/
 ├── app.py                    # Web 聊天界面入口（Flask）
 ├── main.py                   # 命令行交互入口
 ├── run_rag_evaluation.py     # 效果评估入口（Hit Rate / MRR / OpenEvals）
